@@ -23,10 +23,18 @@ class VectorDiagram : View{
 
 
     private var scale: Float = 1f
-    private var originX: Float = resources.displayMetrics.widthPixels / 2.toFloat()
-    private var originY: Float = resources.displayMetrics.heightPixels / 2.toFloat()
+    private var originX: Float = 0f
+    private var originY: Float = 0f
+    private var minOriginX = 0f
+    private var minOriginY = 0f
     private var maxOriginX = 0f
     private var maxOriginY = 0f
+
+    private var rulerOriginX = 0f
+    private var rulerOriginY = 0f
+    private var maxRulerOriginX = 0f
+    private var maxRulerOriginY = 0f
+
 
     private val minScale: Float = 0.5f
     private val maxScale: Float = 2.5f
@@ -34,7 +42,6 @@ class VectorDiagram : View{
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
 
-    private lateinit var rectF: RectF
 
     val paint = Paint().apply {
         color = Color.BLUE
@@ -42,19 +49,29 @@ class VectorDiagram : View{
     }
 
     private fun init(){
-        originX = width/2.toFloat()
-        originY = height/2.toFloat()
+        Timber.e("originX : $originX, originY : $originX")
+
         gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener(){
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
                 Timber.i("onScroll")
-                originX += distanceX/scale
-                originY += distanceY/scale
+                originX -= distanceX/scale
+                originY -= distanceY/scale
+                rulerOriginX -= distanceX/scale
+                rulerOriginY -= distanceY/scale
 
                 Timber.i("onScroll originX = ${originX} originY = ${originY}")
-                originX = originX.coerceIn(0f, maxOriginX)
-                originY = originY.coerceIn(0f, maxOriginY)
+                Timber.i("onScroll rulerOriginX = ${rulerOriginX} rulerOriginY = ${rulerOriginY}")
+
 
                 return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent?): Boolean {
+                return false
+            }
+
+            override fun onDoubleTapEvent(e: MotionEvent?): Boolean {
+                return false
             }
 
 
@@ -70,16 +87,18 @@ class VectorDiagram : View{
                     val fx = it.focusX
                     val fy = it.focusY
 
-                    originX += fx / scale / 2
-                    originY += fy / scale / 2
+                    originX -= fx / it.scaleFactor
+                    originY -= fy / it.scaleFactor
+                    rulerOriginX -= fx / it.scaleFactor
+                    rulerOriginY -= fy / it.scaleFactor
 
                     scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
 
-                    originX -= fx / scale / 2
-                    originY -= fy / scale / 2
+                    originX += fx / it.scaleFactor
+                    originY += fy / it.scaleFactor
+                    rulerOriginX += fx / it.scaleFactor
+                    rulerOriginY += fy / it.scaleFactor
 
-                    originX = originX.coerceIn(0f, maxOriginX)
-                    originY = originY.coerceIn(0f, maxOriginY)
 
                 }
 
@@ -89,26 +108,67 @@ class VectorDiagram : View{
     }
 
 
+    private fun rulerBackground(canvas: Canvas) {
+
+        val w: Int = canvas.width
+        val h: Int = canvas.height
+
+        val xpos: Float = (w / 2).toFloat()
+        val ypos: Float = (h / 2).toFloat()
+
+        canvas.run {
+            val paint  = Paint(Paint.ANTI_ALIAS_FLAG) // 화면에 그려줄 도구를 셋팅하는 객체
+            paint.color = Color.DKGRAY // 색상을 지정
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2f
+            val interval = FloatArray(3)
+            interval[0] = 10f
+            interval[1] = 10f
+            paint.pathEffect = DashPathEffect(interval, 0f)
+
+
+            val path = Path()
+            path.moveTo(0f, ypos + rulerOriginY)
+            path.lineTo(w.toFloat() * 1/scale, ypos + rulerOriginY)
+            drawPath(path, paint)
+
+//
+            path.reset()
+            path.moveTo(xpos + rulerOriginX, 0f)
+            path.lineTo(xpos + rulerOriginX, h.toFloat() * 1/scale)
+            drawPath(path, paint)
+        }
+    }
+
 
     override fun onDraw(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-
-        maxOriginX = w
-        maxOriginY = h
+        Timber.i("originX : $originX, originY : $originX")
 
         canvas.scale(scale, scale)
         canvas.drawCircle(originX, originY, 100f, paint)
 
+
+        rulerBackground(canvas)
         canvas.scale(1/scale, 1/scale)
         super.onDraw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
         invalidate()
         return true
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        originX = width/2.toFloat()
+        originY = height/2.toFloat()
+//        minOriginX = width/2.toFloat()
+//        minOriginY = height/2.toFloat()
+//        maxOriginX = width.toFloat()
+//        maxOriginY = height.toFloat()
+//        maxRulerOriginX = width.toFloat()
+//        maxRulerOriginY = height.toFloat()
     }
 }
