@@ -8,61 +8,70 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import timber.log.Timber
+import kotlin.math.cos
+import kotlin.math.sin
 
-class VectorDiagram : View{
+class VectorDiagram : View {
 
-    constructor(context: Context):
-        super(context){
-            init()
-        }
+    constructor(context: Context) :
+            super(context) {
+        init()
+    }
 
     constructor(context: Context, attrs: AttributeSet)
-        : super(context){
-            init()
-        }
+            : super(context, attrs) {
+        init()
+    }
 
 
     private var scale: Float = 1f
     private var originX: Float = 0f
     private var originY: Float = 0f
-    private var minOriginX = 0f
-    private var minOriginY = 0f
-    private var maxOriginX = 0f
-    private var maxOriginY = 0f
-
     private var rulerOriginX = 0f
     private var rulerOriginY = 0f
-    private var maxRulerOriginX = 0f
-    private var maxRulerOriginY = 0f
 
-
-    private val minScale: Float = 0.5f
-    private val maxScale: Float = 2.5f
+    private var minScale: Float = 0.3f
+    private var maxScale: Float = 3f
 
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
 
+    private val vectors = arrayListOf<CustomVector>()
 
-    val paint = Paint().apply {
-        color = Color.BLUE
-        style = Paint.Style.STROKE
+
+    fun setMinScale(newMinValue: Float) {
+        minScale = newMinValue
     }
 
-    private fun init(){
+    fun setMaxScale(newMaxValue: Float) {
+        maxScale = newMaxValue
+    }
+
+
+    private val rulerPaint = Paint().apply {
+        color = Color.DKGRAY
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        val interval = FloatArray(3)
+        interval[0] = 10f
+        interval[1] = 10f
+        pathEffect = DashPathEffect(interval, 0f)
+    }
+
+    private fun init() {
         Timber.e("originX : $originX, originY : $originX")
 
-        gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener(){
-            override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
-                Timber.i("onScroll")
-                originX -= distanceX/scale
-                originY -= distanceY/scale
-                rulerOriginX -= distanceX/scale
-                rulerOriginY -= distanceY/scale
-
-                Timber.i("onScroll originX = ${originX} originY = ${originY}")
-                Timber.i("onScroll rulerOriginX = ${rulerOriginX} rulerOriginY = ${rulerOriginY}")
-
-
+        gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onScroll(
+                e1: MotionEvent?,
+                e2: MotionEvent?,
+                distanceX: Float,
+                distanceY: Float
+            ): Boolean {
+                originX -= distanceX / scale
+                originY -= distanceY / scale
+                rulerOriginX -= distanceX / scale
+                rulerOriginY -= distanceY / scale
                 return true
             }
 
@@ -73,102 +82,121 @@ class VectorDiagram : View{
             override fun onDoubleTapEvent(e: MotionEvent?): Boolean {
                 return false
             }
-
-
         })
 
-        scaleGesture = ScaleGestureDetector(context, object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector?): Boolean {
-                detector?.let{
-                    if(it.scaleFactor < 0.01){
-                        return false
+        scaleGesture = ScaleGestureDetector(
+            context,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector?): Boolean {
+                    detector?.let {
+                        if (it.scaleFactor < 0.01) {
+                            return false
+                        }
+                        val fx = it.focusX
+                        val fy = it.focusY
+
+                        originX -= fx / it.scaleFactor
+                        originY -= fy / it.scaleFactor
+                        rulerOriginX -= fx / it.scaleFactor
+                        rulerOriginY -= fy / it.scaleFactor
+
+                        scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
+
+                        originX += fx / it.scaleFactor
+                        originY += fy / it.scaleFactor
+                        rulerOriginX += fx / it.scaleFactor
+                        rulerOriginY += fy / it.scaleFactor
                     }
-                    Timber.i("Scalefactor : ${it.scaleFactor}")
-                    val fx = it.focusX
-                    val fy = it.focusY
 
-                    originX -= fx / it.scaleFactor
-                    originY -= fy / it.scaleFactor
-                    rulerOriginX -= fx / it.scaleFactor
-                    rulerOriginY -= fy / it.scaleFactor
-
-                    scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
-
-                    originX += fx / it.scaleFactor
-                    originY += fy / it.scaleFactor
-                    rulerOriginX += fx / it.scaleFactor
-                    rulerOriginY += fy / it.scaleFactor
-
-
+                    return true
                 }
+            })
+    }
 
-                return true
-            }
-        })
+    fun addCustomVector(angle: Double, length: Int, paint: Paint) {
+        val radian = Math.toRadians(angle)
+        vectors.add(CustomVector(radian, length, paint))
     }
 
 
     private fun rulerBackground(canvas: Canvas) {
 
-        val w: Int = canvas.width
-        val h: Int = canvas.height
+        val w = canvas.width.toFloat()
+        val h = canvas.height.toFloat()
 
-        val xpos: Float = (w / 2).toFloat()
-        val ypos: Float = (h / 2).toFloat()
+        val xpos: Float = (w / 2)
+        val ypos: Float = (h / 2)
+
+        val verticalCenter = ypos + rulerOriginY
+        val horizontalCentor = xpos + rulerOriginX
 
         canvas.run {
-            val paint  = Paint(Paint.ANTI_ALIAS_FLAG) // 화면에 그려줄 도구를 셋팅하는 객체
-            paint.color = Color.DKGRAY // 색상을 지정
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2f
-            val interval = FloatArray(3)
-            interval[0] = 10f
-            interval[1] = 10f
-            paint.pathEffect = DashPathEffect(interval, 0f)
-
-
             val path = Path()
-            path.moveTo(0f, ypos + rulerOriginY)
-            path.lineTo(w.toFloat() * 1/scale, ypos + rulerOriginY)
-            drawPath(path, paint)
+            path.moveTo(0f, verticalCenter)
+            path.lineTo(w * 1 / scale, verticalCenter)
+            drawPath(path, rulerPaint)
 
-//
             path.reset()
-            path.moveTo(xpos + rulerOriginX, 0f)
-            path.lineTo(xpos + rulerOriginX, h.toFloat() * 1/scale)
-            drawPath(path, paint)
+            path.moveTo(horizontalCentor, 0f)
+            path.lineTo(horizontalCentor, h * 1 / scale)
+            drawPath(path, rulerPaint)
         }
     }
 
 
     override fun onDraw(canvas: Canvas) {
-        Timber.i("originX : $originX, originY : $originX")
-
         canvas.scale(scale, scale)
-        canvas.drawCircle(originX, originY, 100f, paint)
-
-
+        drawCircles(canvas)
         rulerBackground(canvas)
-        canvas.scale(1/scale, 1/scale)
+        drawLines(canvas)
         super.onDraw(canvas)
     }
 
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
+    private fun drawLines(canvas: Canvas) {
+        vectors.forEach { vector ->
+            val endX = originX + vector.length * cos(vector.radian)
+            val endY = originY + vector.length * sin(vector.radian)
+
+            val path = Path()
+            path.moveTo(originX, originY)
+            path.lineTo(endX.toFloat(), endY.toFloat())
+            path.close()
+            canvas.drawPath(path, vector.paint)
+        }
+    }
+
+    private fun drawCircles(canvas: Canvas){
+        vectors.forEach { vector ->
+            canvas.drawCircle(originX, originY, vector.length.toFloat(), vector.paint)
+        }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
+        val point = Point()
+        val x = event.x.toInt()
+        val y = event.y.toInt()
+        point.x = x
+        point.y = y
+
         invalidate()
         return true
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        originX = width/2.toFloat()
-        originY = height/2.toFloat()
-//        minOriginX = width/2.toFloat()
-//        minOriginY = height/2.toFloat()
-//        maxOriginX = width.toFloat()
-//        maxOriginY = height.toFloat()
-//        maxRulerOriginX = width.toFloat()
-//        maxRulerOriginY = height.toFloat()
+        originX = width / 2.toFloat()
+        originY = height / 2.toFloat()
+        addCustomVector(-30.0, 200, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.GREEN
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        })
+        addCustomVector(+30.0, 500, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.RED
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        })
     }
 }
