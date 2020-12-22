@@ -1,5 +1,6 @@
 package com.uniqueimaginate.vectordiagram
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
@@ -24,7 +25,7 @@ class VectorDiagram : View {
     }
 
 
-    private var scale: Float = 1f
+    private var scale: Float = 0.7f
     private var originX: Float = 0f
     private var originY: Float = 0f
     private var rulerOriginX = 0f
@@ -36,8 +37,7 @@ class VectorDiagram : View {
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
 
-    private val vectors = arrayListOf<CustomVector>()
-
+    private val vectors = mutableMapOf<String, CustomVector>()
 
     fun setMinScale(newMinValue: Float) {
         minScale = newMinValue
@@ -46,7 +46,6 @@ class VectorDiagram : View {
     fun setMaxScale(newMaxValue: Float) {
         maxScale = newMaxValue
     }
-
 
     private val rulerPaint = Paint().apply {
         color = Color.DKGRAY
@@ -113,9 +112,9 @@ class VectorDiagram : View {
             })
     }
 
-    fun addCustomVector(angle: Double, length: Int, paint: Paint) {
+    fun addCustomVector(label: String, angle: Double, length: Int, paint: Paint) {
         val radian = Math.toRadians(angle)
-        vectors.add(CustomVector(radian, length, paint))
+        vectors[label] = CustomVector(label, radian, length, paint)
     }
 
 
@@ -153,7 +152,7 @@ class VectorDiagram : View {
     }
 
     private fun drawLines(canvas: Canvas) {
-        vectors.forEach { vector ->
+        vectors.values.forEach { vector ->
             val endX = originX + vector.length * cos(vector.radian)
             val endY = originY + vector.length * sin(vector.radian)
 
@@ -166,7 +165,7 @@ class VectorDiagram : View {
     }
 
     private fun drawCircles(canvas: Canvas){
-        vectors.forEach { vector ->
+        vectors.values.forEach { vector ->
             canvas.drawCircle(originX, originY, vector.length.toFloat(), vector.paint)
         }
     }
@@ -174,12 +173,8 @@ class VectorDiagram : View {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
-        val point = Point()
         val x = event.x.toInt()
         val y = event.y.toInt()
-        point.x = x
-        point.y = y
-
         invalidate()
         return true
     }
@@ -188,12 +183,12 @@ class VectorDiagram : View {
         super.onLayout(changed, left, top, right, bottom)
         originX = width / 2.toFloat()
         originY = height / 2.toFloat()
-        addCustomVector(-30.0, 200, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        addCustomVector("1", -30.0, 200, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.GREEN
             style = Paint.Style.STROKE
             strokeWidth = 3f
         })
-        addCustomVector(+30.0, 500, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        addCustomVector("2", +30.0, 500, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.RED
             style = Paint.Style.STROKE
             strokeWidth = 3f
