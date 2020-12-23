@@ -1,6 +1,5 @@
 package com.uniqueimaginate.vectordiagram
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
@@ -34,7 +33,7 @@ class VectorDiagram : View {
     private var rulerOriginY = 0f
 
     private var minScale: Float = 0.3f
-    private var maxScale: Float = 3f
+    private var maxScale: Float = 4f
 
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
@@ -114,8 +113,8 @@ class VectorDiagram : View {
             })
     }
 
-    fun addCustomVector(label: String, angle: Double, length: Int, paint: Paint) {
-        val radian = Math.toRadians(angle)
+    fun addCustomVector(label: String, angle: Int, length: Int, paint: Paint) {
+        val radian = Math.toRadians(angle.toDouble())
         vectors[label] = CustomVector(label, radian, length, paint)
     }
 
@@ -148,17 +147,18 @@ class VectorDiagram : View {
         rulerBackground(canvas)
         drawLines(canvas)
         drawArrows(canvas)
+        addLabelsOnVector(canvas)
         super.onDraw(canvas)
     }
 
     private fun drawLines(canvas: Canvas) {
         vectors.values.forEach { vector ->
-            val endX = originX + vector.length * cos(vector.radian)
-            val endY = originY + vector.length * sin(vector.radian)
+            val endX = vector.getX(originX)
+            val endY = vector.getY(originY)
 
             val path = Path()
             path.moveTo(originX, originY)
-            path.lineTo(endX.toFloat(), endY.toFloat())
+            path.lineTo(endX, endY)
             path.close()
             canvas.drawPath(path, vector.paint)
         }
@@ -166,9 +166,11 @@ class VectorDiagram : View {
 
     private fun drawArrows(canvas: Canvas){
         vectors.values.forEach { vector ->
-            val endX = originX + vector.length * cos(vector.radian)
-            val endY = originY + vector.length * sin(vector.radian)
-            drawArrow(vector.paint, canvas, endX.toFloat(), endY.toFloat())
+            val endX = vector.getX(originX)
+            val endY = vector.getY(originY)
+            if(vector.length == 0)
+                return@forEach
+            drawArrow(vector.paint, canvas, endX, endY)
         }
     }
 
@@ -211,6 +213,42 @@ class VectorDiagram : View {
     private fun drawCircles(canvas: Canvas){
         vectors.values.forEach { vector ->
             canvas.drawCircle(originX, originY, vector.length.toFloat(), vector.paint)
+        }
+    }
+
+    private fun addLabelsOnVector(canvas: Canvas){
+        vectors.values.forEach { vector ->
+            val endX = vector.getX(originX)
+            val endY = vector.getY(originY)
+
+            val degree = Math.toDegrees(vector.radian).toInt()
+
+            when(degree % 360){
+                0 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f , vector.paint)
+                }
+                in 1..89 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                }
+                90 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                }
+                in 91..179 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                }
+                180 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                }
+                in 181..269 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                }
+                270 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                }
+                in 271..359 -> {
+                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                }
+            }
         }
     }
 
