@@ -9,6 +9,8 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import timber.log.Timber
+import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -25,7 +27,7 @@ class VectorDiagram : View {
     }
 
 
-    private var scale: Float = 0.7f
+    private var scale: Float = 0.5f
     private var originX: Float = 0f
     private var originY: Float = 0f
     private var rulerOriginX = 0f
@@ -123,11 +125,8 @@ class VectorDiagram : View {
         val w = canvas.width.toFloat()
         val h = canvas.height.toFloat()
 
-        val xpos: Float = (w / 2)
-        val ypos: Float = (h / 2)
-
-        val verticalCenter = ypos + rulerOriginY
-        val horizontalCentor = xpos + rulerOriginX
+        val verticalCenter = originY
+        val horizontalCentor = originX
 
         canvas.run {
             val path = Path()
@@ -148,6 +147,7 @@ class VectorDiagram : View {
         drawCircles(canvas)
         rulerBackground(canvas)
         drawLines(canvas)
+        drawArrows(canvas)
         super.onDraw(canvas)
     }
 
@@ -162,6 +162,50 @@ class VectorDiagram : View {
             path.close()
             canvas.drawPath(path, vector.paint)
         }
+    }
+
+    private fun drawArrows(canvas: Canvas){
+        vectors.values.forEach { vector ->
+            val endX = originX + vector.length * cos(vector.radian)
+            val endY = originY + vector.length * sin(vector.radian)
+            drawArrow(vector.paint, canvas, endX.toFloat(), endY.toFloat())
+        }
+    }
+
+    private fun drawArrow(
+        paint: Paint,
+        canvas: Canvas,
+        to_x: Float,
+        to_y: Float
+    ) {
+        var angle = 0f
+        var anglerad: Float = 0f
+        var radius: Float = 0f
+        var lineangle: Float = 0f
+
+        //values to change for other appearance *CHANGE THESE FOR OTHER SIZE ARROWHEADS*
+        radius = 20f
+        angle = 45f
+
+        paint.style = Paint.Style.FILL_AND_STROKE
+
+        anglerad = ((PI * angle / 180.0f).toFloat())
+        lineangle = atan2(to_y - originY, to_x - originX)
+
+        canvas.drawLine(originX, originY, to_x, to_y, paint)
+
+        //tha triangle
+        val path = Path()
+        path.fillType = Path.FillType.EVEN_ODD
+        path.moveTo(to_x, to_y)
+        path.lineTo((to_x - radius * cos(lineangle - anglerad / 2.0)).toFloat(),
+            (to_y - radius * sin(lineangle - anglerad / 2.0)).toFloat())
+        path.lineTo((to_x - radius * cos(lineangle + anglerad / 2.0)).toFloat(),
+            (to_y - radius * sin(lineangle + anglerad / 2.0)).toFloat())
+        path.close()
+        canvas.drawPath(path, paint)
+
+        paint.style = Paint.Style.STROKE
     }
 
     private fun drawCircles(canvas: Canvas){
@@ -181,17 +225,8 @@ class VectorDiagram : View {
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        originX = width / 2.toFloat()
-        originY = height / 2.toFloat()
-        addCustomVector("1", -30.0, 200, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.GREEN
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-        })
-        addCustomVector("2", +30.0, 500, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.RED
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-        })
+        originX = width.toFloat()
+        originY = height.toFloat()
+
     }
 }
