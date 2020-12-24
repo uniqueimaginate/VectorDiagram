@@ -7,7 +7,6 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import timber.log.Timber
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -59,8 +58,6 @@ class VectorDiagram : View {
     }
 
     private fun init() {
-        Timber.e("originX : $originX, originY : $originX")
-
         gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onScroll(
                 e1: MotionEvent?,
@@ -97,15 +94,15 @@ class VectorDiagram : View {
 
                         originX -= fx / it.scaleFactor
                         originY -= fy / it.scaleFactor
-                        rulerOriginX -= fx / it.scaleFactor
-                        rulerOriginY -= fy / it.scaleFactor
+//                        rulerOriginX -= fx / it.scaleFactor
+//                        rulerOriginY -= fy / it.scaleFactor
 
                         scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
 
                         originX += fx / it.scaleFactor
                         originY += fy / it.scaleFactor
-                        rulerOriginX += fx / it.scaleFactor
-                        rulerOriginY += fy / it.scaleFactor
+//                        rulerOriginX += fx / it.scaleFactor
+//                        rulerOriginY += fy / it.scaleFactor
                     }
 
                     return true
@@ -125,7 +122,7 @@ class VectorDiagram : View {
         val h = canvas.height.toFloat()
 
         val verticalCenter = originY
-        val horizontalCentor = originX
+        val horizontalCenter = originX
 
         canvas.run {
             val path = Path()
@@ -134,8 +131,8 @@ class VectorDiagram : View {
             drawPath(path, rulerPaint)
 
             path.reset()
-            path.moveTo(horizontalCentor, 0f)
-            path.lineTo(horizontalCentor, h * 1 / scale)
+            path.moveTo(horizontalCenter, 0f)
+            path.lineTo(horizontalCenter, h * 1 / scale)
             drawPath(path, rulerPaint)
         }
     }
@@ -147,7 +144,7 @@ class VectorDiagram : View {
         rulerBackground(canvas)
         drawLines(canvas)
         drawArrows(canvas)
-        addLabelsOnVector(canvas)
+        addTextOnVectors(canvas)
         super.onDraw(canvas)
     }
 
@@ -206,17 +203,20 @@ class VectorDiagram : View {
             (to_y - radius * sin(lineangle + anglerad / 2.0)).toFloat())
         path.close()
         canvas.drawPath(path, paint)
-
         paint.style = Paint.Style.STROKE
     }
 
     private fun drawCircles(canvas: Canvas){
         vectors.values.forEach { vector ->
-            canvas.drawCircle(originX, originY, vector.length.toFloat(), vector.paint)
+            canvas.drawCircle(originX, originY, vector.length.toFloat(), Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.GRAY
+                style = Paint.Style.STROKE
+                strokeWidth = 1f
+            })
         }
     }
 
-    private fun addLabelsOnVector(canvas: Canvas){
+    private fun addTextOnVectors(canvas: Canvas){
         vectors.values.forEach { vector ->
             val endX = vector.getX(originX)
             val endY = vector.getY(originY)
@@ -255,8 +255,8 @@ class VectorDiagram : View {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
-        val x = event.x.toInt()
-        val y = event.y.toInt()
+//        val x = event.x.toInt()
+//        val y = event.y.toInt()
         invalidate()
         return true
     }
@@ -265,6 +265,5 @@ class VectorDiagram : View {
         super.onLayout(changed, left, top, right, bottom)
         originX = width.toFloat()
         originY = height.toFloat()
-
     }
 }
