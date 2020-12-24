@@ -3,6 +3,7 @@ package com.uniqueimaginate.vectordiagram
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -28,8 +29,6 @@ class VectorDiagram : View {
     private var scale: Float = 0.5f
     private var originX: Float = 0f
     private var originY: Float = 0f
-    private var rulerOriginX = 0f
-    private var rulerOriginY = 0f
 
     private var minScale: Float = 0.3f
     private var maxScale: Float = 4f
@@ -59,6 +58,10 @@ class VectorDiagram : View {
 
     private fun init() {
         gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+
+            override fun onDown(e: MotionEvent?): Boolean {
+                return super.onDown(e)
+            }
             override fun onScroll(
                 e1: MotionEvent?,
                 e2: MotionEvent?,
@@ -67,8 +70,9 @@ class VectorDiagram : View {
             ): Boolean {
                 originX -= distanceX / scale
                 originY -= distanceY / scale
-                rulerOriginX -= distanceX / scale
-                rulerOriginY -= distanceY / scale
+                Log.d("onScroll distanceX", "$distanceX")
+                Log.d("onScroll distanceY", "$distanceY")
+
                 return true
             }
 
@@ -89,20 +93,13 @@ class VectorDiagram : View {
                         if (it.scaleFactor < 0.01) {
                             return false
                         }
-                        val fx = it.focusX
-                        val fy = it.focusY
+//                        val fx = it.focusX
+//                        val fy = it.focusY
 
-                        originX -= fx / it.scaleFactor
-                        originY -= fy / it.scaleFactor
-//                        rulerOriginX -= fx / it.scaleFactor
-//                        rulerOriginY -= fy / it.scaleFactor
 
                         scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
+//
 
-                        originX += fx / it.scaleFactor
-                        originY += fy / it.scaleFactor
-//                        rulerOriginX += fx / it.scaleFactor
-//                        rulerOriginY += fy / it.scaleFactor
                     }
 
                     return true
