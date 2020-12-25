@@ -1,2 +1,3 @@
+include ':VectorDiagramLib'
 include ':app'
 rootProject.name = "VectorDiagram"
