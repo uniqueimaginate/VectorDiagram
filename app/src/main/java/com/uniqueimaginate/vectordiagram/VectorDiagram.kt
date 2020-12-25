@@ -8,10 +8,8 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
+import timber.log.Timber
+import kotlin.math.*
 
 class VectorDiagram : View {
 
@@ -36,6 +34,8 @@ class VectorDiagram : View {
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
 
+    private var scaling = false
+
     private val vectors = mutableMapOf<String, CustomVector>()
 
     fun setMinScale(newMinValue: Float) {
@@ -59,19 +59,21 @@ class VectorDiagram : View {
     private fun init() {
         gesture = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
 
-            override fun onDown(e: MotionEvent?): Boolean {
-                return super.onDown(e)
-            }
+
             override fun onScroll(
                 e1: MotionEvent?,
                 e2: MotionEvent?,
                 distanceX: Float,
                 distanceY: Float
             ): Boolean {
-                originX -= distanceX / scale
-                originY -= distanceY / scale
-                Log.d("onScroll distanceX", "$distanceX")
-                Log.d("onScroll distanceY", "$distanceY")
+
+                if (scale < 1) {
+                    originX -= (distanceX * scale)
+                    originY -= (distanceY * scale)
+                } else {
+                    originX -= (distanceX / (scale * scale))
+                    originY -= (distanceY / (scale * scale))
+                }
 
                 return true
             }
@@ -93,13 +95,8 @@ class VectorDiagram : View {
                         if (it.scaleFactor < 0.01) {
                             return false
                         }
-//                        val fx = it.focusX
-//                        val fy = it.focusY
-
 
                         scale = Math.min(Math.max(scale * it.scaleFactor, minScale), maxScale)
-//
-
                     }
 
                     return true
@@ -108,7 +105,7 @@ class VectorDiagram : View {
     }
 
     fun addCustomVector(label: String, angle: Int, length: Int, paint: Paint) {
-        val radian = Math.toRadians(angle.toDouble())
+        val radian = Math.toRadians(-angle.toDouble())
         vectors[label] = CustomVector(label, radian, length, paint)
     }
 
@@ -122,26 +119,32 @@ class VectorDiagram : View {
         val horizontalCenter = originX
 
         canvas.run {
+            Timber.i("$originX")
+            Timber.i("$originY")
             val path = Path()
-            path.moveTo(0f, verticalCenter)
-            path.lineTo(w * 1 / scale, verticalCenter)
+            path.moveTo(-originX / scale , verticalCenter)
+            path.lineTo( 2 *  (abs(originX) / scale) +1000f, verticalCenter)
             drawPath(path, rulerPaint)
 
             path.reset()
-            path.moveTo(horizontalCenter, 0f)
-            path.lineTo(horizontalCenter, h * 1 / scale)
+            path.moveTo(horizontalCenter, -originY / scale)
+            path.lineTo(horizontalCenter, 10000f)
             drawPath(path, rulerPaint)
         }
     }
 
 
+
     override fun onDraw(canvas: Canvas) {
+        canvas.save()
+        canvas.translate(originX, originY)
         canvas.scale(scale, scale)
         drawCircles(canvas)
         rulerBackground(canvas)
         drawLines(canvas)
         drawArrows(canvas)
         addTextOnVectors(canvas)
+        canvas.restore()
         super.onDraw(canvas)
     }
 
@@ -158,11 +161,11 @@ class VectorDiagram : View {
         }
     }
 
-    private fun drawArrows(canvas: Canvas){
+    private fun drawArrows(canvas: Canvas) {
         vectors.values.forEach { vector ->
             val endX = vector.getX(originX)
             val endY = vector.getY(originY)
-            if(vector.length == 0)
+            if (vector.length == 0)
                 return@forEach
             drawArrow(vector.paint, canvas, endX, endY)
         }
@@ -194,73 +197,81 @@ class VectorDiagram : View {
         val path = Path()
         path.fillType = Path.FillType.EVEN_ODD
         path.moveTo(to_x, to_y)
-        path.lineTo((to_x - radius * cos(lineangle - anglerad / 2.0)).toFloat(),
-            (to_y - radius * sin(lineangle - anglerad / 2.0)).toFloat())
-        path.lineTo((to_x - radius * cos(lineangle + anglerad / 2.0)).toFloat(),
-            (to_y - radius * sin(lineangle + anglerad / 2.0)).toFloat())
+        path.lineTo(
+            (to_x - radius * cos(lineangle - anglerad / 2.0)).toFloat(),
+            (to_y - radius * sin(lineangle - anglerad / 2.0)).toFloat()
+        )
+        path.lineTo(
+            (to_x - radius * cos(lineangle + anglerad / 2.0)).toFloat(),
+            (to_y - radius * sin(lineangle + anglerad / 2.0)).toFloat()
+        )
         path.close()
         canvas.drawPath(path, paint)
         paint.style = Paint.Style.STROKE
     }
 
-    private fun drawCircles(canvas: Canvas){
+    private fun drawCircles(canvas: Canvas) {
         vectors.values.forEach { vector ->
-            canvas.drawCircle(originX, originY, vector.length.toFloat(), Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.GRAY
-                style = Paint.Style.STROKE
-                strokeWidth = 1f
-            })
+            canvas.drawCircle(
+                originX,
+                originY,
+                vector.length.toFloat(),
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.GRAY
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1f
+                })
         }
     }
 
-    private fun addTextOnVectors(canvas: Canvas){
+    private fun addTextOnVectors(canvas: Canvas) {
         vectors.values.forEach { vector ->
             val endX = vector.getX(originX)
             val endY = vector.getY(originY)
 
-            val degree = Math.toDegrees(vector.radian).toInt()
+            val degree = Math.abs(Math.toDegrees(vector.radian).toInt())
 
-            when(degree % 360){
+            when (degree % 360) {
                 0 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f , vector.paint)
+                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
                 }
                 in 1..89 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
                 }
                 90 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX - 25f, endY - 50f, vector.paint)
                 }
                 in 91..179 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX - 50f, endY - 50f, vector.paint)
                 }
                 180 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX - 50f, endY - 50f, vector.paint)
                 }
                 in 181..269 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX - 50f, endY + 50f, vector.paint)
                 }
                 270 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX - 25f, endY + 50f, vector.paint)
                 }
                 in 271..359 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
                 }
             }
         }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        Timber.i("x : ${event.x}")
+        Timber.i("y : ${event.y}")
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
-//        val x = event.x.toInt()
-//        val y = event.y.toInt()
         invalidate()
         return true
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        originX = width.toFloat()
-        originY = height.toFloat()
+        originX = width.toFloat() / 3
+        originY = height.toFloat() / 3
     }
 }
