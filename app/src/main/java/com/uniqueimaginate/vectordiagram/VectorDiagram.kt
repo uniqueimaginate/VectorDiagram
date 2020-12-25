@@ -24,17 +24,15 @@ class VectorDiagram : View {
     }
 
 
-    private var scale: Float = 0.5f
+    private var scale: Float = 1f
     private var originX: Float = 0f
     private var originY: Float = 0f
 
-    private var minScale: Float = 0.3f
-    private var maxScale: Float = 4f
+    private var minScale: Float = 0.5f
+    private var maxScale: Float = 3f
 
     private lateinit var gesture: GestureDetector
     private lateinit var scaleGesture: ScaleGestureDetector
-
-    private var scaling = false
 
     private val vectors = mutableMapOf<String, CustomVector>()
 
@@ -67,7 +65,7 @@ class VectorDiagram : View {
                 distanceY: Float
             ): Boolean {
 
-                if (scale < 1) {
+                if (scale <= 1) {
                     originX -= (distanceX * scale)
                     originY -= (distanceY * scale)
                 } else {
@@ -104,16 +102,16 @@ class VectorDiagram : View {
             })
     }
 
-    fun addCustomVector(label: String, angle: Int, length: Int, paint: Paint) {
+    fun addVector(label: String, angle: Int, length: Int, textSize: Float = 25f, strokeWidth: Float = 3f, color: Int = Color.BLACK) {
         val radian = Math.toRadians(-angle.toDouble())
-        vectors[label] = CustomVector(label, radian, length, paint)
+        vectors[label] = CustomVector(label, radian, length, textSize, strokeWidth, color)
     }
 
+    fun removeVector(label: String){
+        vectors.remove(label)
+    }
 
     private fun rulerBackground(canvas: Canvas) {
-
-        val w = canvas.width.toFloat()
-        val h = canvas.height.toFloat()
 
         val verticalCenter = originY
         val horizontalCenter = originX
@@ -123,7 +121,7 @@ class VectorDiagram : View {
             Timber.i("$originY")
             val path = Path()
             path.moveTo(-originX / scale , verticalCenter)
-            path.lineTo( 2 *  (abs(originX) / scale) +1000f, verticalCenter)
+            path.lineTo( 10000f, verticalCenter)
             drawPath(path, rulerPaint)
 
             path.reset()
@@ -139,37 +137,38 @@ class VectorDiagram : View {
         canvas.save()
         canvas.translate(originX, originY)
         canvas.scale(scale, scale)
-        drawCircles(canvas)
         rulerBackground(canvas)
-        drawLines(canvas)
-        drawArrows(canvas)
-        addTextOnVectors(canvas)
+        drawEverything(canvas)
         canvas.restore()
         super.onDraw(canvas)
     }
 
-    private fun drawLines(canvas: Canvas) {
+    private fun drawEverything(canvas: Canvas){
         vectors.values.forEach { vector ->
             val endX = vector.getX(originX)
             val endY = vector.getY(originY)
+            val paint = Paint().apply {
+                color = vector.color
+                strokeWidth = vector.strokeWidth
+                textSize = vector.textSize
+            }
 
-            val path = Path()
-            path.moveTo(originX, originY)
-            path.lineTo(endX, endY)
-            path.close()
-            canvas.drawPath(path, vector.paint)
+            drawCircle(canvas, vector.length)
+            drawLine(canvas, endX, endY, paint)
+            addTextOnVectors(canvas, endX, endY, paint, vector.radian, vector.length)
         }
     }
 
-    private fun drawArrows(canvas: Canvas) {
-        vectors.values.forEach { vector ->
-            val endX = vector.getX(originX)
-            val endY = vector.getY(originY)
-            if (vector.length == 0)
-                return@forEach
-            drawArrow(vector.paint, canvas, endX, endY)
-        }
+    private fun drawLine(canvas: Canvas, endX: Float, endY: Float, paint: Paint){
+        val path = Path()
+        path.moveTo(originX, originY)
+        path.lineTo(endX, endY)
+        path.close()
+
+        canvas.drawPath(path, paint)
+        drawArrow(paint, canvas, endX, endY)
     }
+
 
     private fun drawArrow(
         paint: Paint,
@@ -178,9 +177,9 @@ class VectorDiagram : View {
         to_y: Float
     ) {
         var angle = 0f
-        var anglerad: Float = 0f
-        var radius: Float = 0f
-        var lineangle: Float = 0f
+        var anglerad = 0f
+        var radius = 0f
+        var lineangle = 0f
 
         //values to change for other appearance *CHANGE THESE FOR OTHER SIZE ARROWHEADS*
         radius = 20f
@@ -210,54 +209,45 @@ class VectorDiagram : View {
         paint.style = Paint.Style.STROKE
     }
 
-    private fun drawCircles(canvas: Canvas) {
-        vectors.values.forEach { vector ->
-            canvas.drawCircle(
-                originX,
-                originY,
-                vector.length.toFloat(),
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color.GRAY
-                    style = Paint.Style.STROKE
-                    strokeWidth = 1f
-                })
+    private fun drawCircle(canvas: Canvas, length: Int){
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.GRAY
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
         }
+        canvas.drawCircle(originX, originY, length.toFloat() / 2, paint)
     }
 
-    private fun addTextOnVectors(canvas: Canvas) {
-        vectors.values.forEach { vector ->
-            val endX = vector.getX(originX)
-            val endY = vector.getY(originY)
-
-            val degree = Math.abs(Math.toDegrees(vector.radian).toInt())
+    private fun addTextOnVectors(canvas: Canvas, endX: Float, endY: Float, paint: Paint, radian: Double, length: Int) {
+            val degree = abs(Math.toDegrees(radian).toInt())
 
             when (degree % 360) {
                 0 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                    canvas.drawText("0 \u00B0, $length", endX, endY - 50f, paint)
                 }
                 in 1..89 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY - 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX, endY - 50f, paint)
                 }
                 90 -> {
-                    canvas.drawText(vector.length.toString(), endX - 25f, endY - 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX - 50f, endY - 50f, paint)
                 }
                 in 91..179 -> {
-                    canvas.drawText(vector.length.toString(), endX - 50f, endY - 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
                 }
                 180 -> {
-                    canvas.drawText(vector.length.toString(), endX - 50f, endY - 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
                 }
                 in 181..269 -> {
-                    canvas.drawText(vector.length.toString(), endX - 50f, endY + 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY + 50f, paint)
                 }
                 270 -> {
-                    canvas.drawText(vector.length.toString(), endX - 25f, endY + 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX - 50f, endY + 50f, paint)
                 }
                 in 271..359 -> {
-                    canvas.drawText(vector.length.toString(), endX, endY + 50f, vector.paint)
+                    canvas.drawText("$degree \u00B0, $length", endX, endY + 50f, paint)
                 }
             }
-        }
+
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -271,7 +261,7 @@ class VectorDiagram : View {
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        originX = width.toFloat() / 3
-        originY = height.toFloat() / 3
+        originX = width.toFloat() / 4
+        originY = height.toFloat() / 4
     }
 }
