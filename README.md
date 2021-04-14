@@ -2,7 +2,7 @@
 
 Making Android custom vector diagram
 
-![vector_diagram](/Users/peter/VectorDiagram/vector_diagram.png)
+![vector_diagram](./vector_diagram.png)
 
 You can add arrows with size and degree.
 
