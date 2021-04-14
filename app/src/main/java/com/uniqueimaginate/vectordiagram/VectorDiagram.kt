@@ -3,12 +3,10 @@ package com.uniqueimaginate.vectordiagram
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import timber.log.Timber
 import kotlin.math.*
 
 class VectorDiagram : View {
@@ -102,12 +100,19 @@ class VectorDiagram : View {
             })
     }
 
-    fun addVector(label: String, angle: Int, length: Int, textSize: Float = 25f, strokeWidth: Float = 3f, color: Int = Color.BLACK) {
+    fun addVector(
+        label: String,
+        angle: Int,
+        length: Int,
+        textSize: Float = 25f,
+        strokeWidth: Float = 3f,
+        color: Int = Color.BLACK
+    ) {
         val radian = Math.toRadians(-angle.toDouble())
         vectors[label] = CustomVector(label, radian, length, textSize, strokeWidth, color)
     }
 
-    fun removeVector(label: String){
+    fun removeVector(label: String) {
         vectors.remove(label)
     }
 
@@ -117,11 +122,9 @@ class VectorDiagram : View {
         val horizontalCenter = originX
 
         canvas.run {
-            Timber.i("$originX")
-            Timber.i("$originY")
             val path = Path()
-            path.moveTo(-originX / scale , verticalCenter)
-            path.lineTo( 10000f, verticalCenter)
+            path.moveTo(-originX / scale, verticalCenter)
+            path.lineTo(10000f, verticalCenter)
             drawPath(path, rulerPaint)
 
             path.reset()
@@ -130,7 +133,6 @@ class VectorDiagram : View {
             drawPath(path, rulerPaint)
         }
     }
-
 
 
     override fun onDraw(canvas: Canvas) {
@@ -143,7 +145,7 @@ class VectorDiagram : View {
         super.onDraw(canvas)
     }
 
-    private fun drawEverything(canvas: Canvas){
+    private fun drawEverything(canvas: Canvas) {
         vectors.values.forEach { vector ->
             val endX = vector.getX(originX)
             val endY = vector.getY(originY)
@@ -159,7 +161,7 @@ class VectorDiagram : View {
         }
     }
 
-    private fun drawLine(canvas: Canvas, endX: Float, endY: Float, paint: Paint){
+    private fun drawLine(canvas: Canvas, endX: Float, endY: Float, paint: Paint) {
         val path = Path()
         path.moveTo(originX, originY)
         path.lineTo(endX, endY)
@@ -209,7 +211,7 @@ class VectorDiagram : View {
         paint.style = Paint.Style.STROKE
     }
 
-    private fun drawCircle(canvas: Canvas, length: Int){
+    private fun drawCircle(canvas: Canvas, length: Int) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.GRAY
             style = Paint.Style.STROKE
@@ -218,41 +220,46 @@ class VectorDiagram : View {
         canvas.drawCircle(originX, originY, length.toFloat() / 2, paint)
     }
 
-    private fun addTextOnVectors(canvas: Canvas, endX: Float, endY: Float, paint: Paint, radian: Double, length: Int) {
-            val degree = abs(Math.toDegrees(radian).toInt())
+    private fun addTextOnVectors(
+        canvas: Canvas,
+        endX: Float,
+        endY: Float,
+        paint: Paint,
+        radian: Double,
+        length: Int
+    ) {
+        val degree = abs(Math.toDegrees(radian).toInt())
 
-            when (degree % 360) {
-                0 -> {
-                    canvas.drawText("0 \u00B0, $length", endX, endY - 50f, paint)
-                }
-                in 1..89 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX, endY - 50f, paint)
-                }
-                90 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX - 50f, endY - 50f, paint)
-                }
-                in 91..179 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
-                }
-                180 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
-                }
-                in 181..269 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX - 100f, endY + 50f, paint)
-                }
-                270 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX - 50f, endY + 50f, paint)
-                }
-                in 271..359 -> {
-                    canvas.drawText("$degree \u00B0, $length", endX, endY + 50f, paint)
-                }
+        when (degree % 360) {
+            0 -> {
+                canvas.drawText("0 \u00B0, $length", endX, endY - 50f, paint)
             }
+            in 1..89 -> {
+                canvas.drawText("$degree \u00B0, $length", endX, endY - 50f, paint)
+            }
+            90 -> {
+                canvas.drawText("$degree \u00B0, $length", endX - 50f, endY - 50f, paint)
+            }
+            in 91..179 -> {
+                canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
+            }
+            180 -> {
+                canvas.drawText("$degree \u00B0, $length", endX - 100f, endY - 50f, paint)
+            }
+            in 181..269 -> {
+                canvas.drawText("$degree \u00B0, $length", endX - 100f, endY + 50f, paint)
+            }
+            270 -> {
+                canvas.drawText("$degree \u00B0, $length", endX - 50f, endY + 50f, paint)
+            }
+            in 271..359 -> {
+                canvas.drawText("$degree \u00B0, $length", endX, endY + 50f, paint)
+            }
+        }
 
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        Timber.i("x : ${event.x}")
-        Timber.i("y : ${event.y}")
         gesture.onTouchEvent(event)
         scaleGesture.onTouchEvent(event)
         invalidate()
